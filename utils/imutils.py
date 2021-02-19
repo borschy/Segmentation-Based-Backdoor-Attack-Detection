@@ -3,10 +3,6 @@ from matplotlib import pyplot as plt
 import cv2
 import torch
 
-'''
-class Dataset(datasets):
-    def __init__(self, img):
-'''
 
 # TAKES IN HWC IMAGES
 def imshow(img:np.ndarray, title=None):
