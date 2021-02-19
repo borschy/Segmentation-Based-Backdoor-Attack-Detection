@@ -8,46 +8,20 @@ class Dataset(datasets):
     def __init__(self, img):
 '''
 
-# WHAT SHAPE DOES IT HAVE TO BEEEEEEEEE
+# TAKES IN HWC IMAGES
 def imshow(img:np.ndarray, title=None):
     img_copy = np.copy(img) # otherwise we'd fuck up the original data
-    # img_copy = img_copy / 2 + 0.5 # unnormalize # no need to unnormalize bc we didnt normalize
-    # we dont want to permanently change the shape, just for displaying the image
-    # plt.imshow(np.transpose(np.squeeze(img_copy), (1,2,0)))
-    # plt.imshow()
+    if img_copy.shape[0] == 3: # chw
+        img_copy = to_hwc(img_copy)
+    elif img_copy.shape[2] == 3: # hwc
+        pass
+    else: 
+        print(f"Anomaly detected: image shape {img_copy.shape}")
+        return ValueError
     plt.imshow(img_copy)
     if title is not None: plt.title(title)
     plt.show()
 
-# random transforms are applied at every epoch so each epoch
-# gets a different combo of images 
-def expired_get_raw_data(): # IMAGES ARE HWC
-    # in data_utils now
-    #Get all targets
-    '''
-    targets = dataset[,]
-
-    # Create target_indices
-    target_indices = np.arange(len(targets))
-
-    # Split into train and validation
-    train_idx, val_idx = train_test_split(target_indices, train_size=0.8)
-
-    # Specify which class to remove from train
-    classidx_to_remove = 0
-
-    # Get indices to keep from train split
-    idx_to_keep = targets[train_idx]!=classidx_to_remove
-
-    # Only keep your desired classes
-    train_idx = train_idx[idx_to_keep]
-
-    train_dataset = Subset(dataset, train_idx)
-
-    # trainval = datasets.VOCDetection(root="data/", download=True, image_set="trainval")
-    # val = datasets.VOCDetection(root="data/", download=True, image_set="val")
-    '''
-    return train #, trainval, val
 
 def show_object_rect(image: np.ndarray, bndbox):
     pt1 = bndbox[:2]
@@ -104,24 +78,4 @@ def to_hwc(arr):
         return arr_copy
     else: return ValueError
 
-if __name__ == "__main__":
-    train = get_raw_data()
-    '''
-    min_h, min_w = 147, 282
-    #, trainval, val = get_raw_data()
-    for i, sample in enumerate(train):
-        if i == 500: break
 
-        image, annotation = sample[0], sample[1]["annotation"]
-        objects = annotation["object"]
-        img_arr = np.array(image)
-        # imshow(img_arr, title=f'img #{i} object #: {len(objects)}')
-        # show_bboxes(img_arr, objects)
-        h, w, c = img_arr.shape
-        if h != min_h:
-            print(f"Image {i} not of height {min_h}")
-        if w != min_w:
-            print(f"Image {i} not of width {min_w}")
-    
-    print(f"min_h: {min_h}\nmin_w: {min_w}")
-    '''
