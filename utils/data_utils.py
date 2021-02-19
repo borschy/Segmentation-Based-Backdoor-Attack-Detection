@@ -3,6 +3,8 @@
 # TODO: make sure the random transforms will work after passed through a custom class
 # TODO: 
 
+import random
+
 import torch
 import pandas as pd
 from skimage import io, transform
@@ -13,6 +15,8 @@ from torchvision import transforms, utils
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
+try: from imutils import imshow
+except ModuleNotFoundError: from utils.imutils import imshow
 
 def get_raw_data(trn=1, vl=0, tst=0): # IMAGES ARE HWC
     data = []
@@ -26,7 +30,18 @@ def get_raw_data(trn=1, vl=0, tst=0): # IMAGES ARE HWC
     if tst: 
         test = datasets.VOCDetection(root="data/", download=True, image_set="val", transform=transform)
         data.append(test)
+    if len(data)==1: data = data[0]
     return data
+
+def get_label(sample):
+    obj_names = []
+    image, annotation = sample[0], sample[1]["annotation"]
+    objects = annotation["object"]
+    for item in objects:
+        obj_names.append(item["name"]) 
+    if len(obj_names)==1: obj_names=obj_names[0]
+    return obj_names
+
 
 # this data is chw
 class SingleClassDataset(Dataset):
@@ -54,13 +69,13 @@ class SingleClassDataset(Dataset):
 
 
 class PoisonedDataset(SingleClassDataset):
-    def __init__(self, dataset, target_class, trigger, poison_rate):
-        super().__init__(self, dataset)
+    def __init__(self, dataset, target_class=0, trigger="square", poison_rate=.1):
+        super().__init__(dataset)
         self.target_class = target_class
         self.trigger = trigger
         self.poison_rate = poison_rate
 
-    def __poison_img__(self, img):
+    def __poison_image__(self, img):
         img_copy = np.copy(img)
 
         if img_copy.shape[0] == 3: 
@@ -73,18 +88,12 @@ class PoisonedDataset(SingleClassDataset):
             print(f"Anomaly detected: image shape {img_copy.shape}")
             return ValueError
 
-        mask, pattern = __construct_mask_corner__(img_copy)
-        adv_img = __inject_trigger__(mask, pattern, img_copy)
+        mask, pattern = self.__construct_mask_corner__(img_copy)
+        adv_img = self.__inject_trigger__(mask, pattern, img_copy)
         return adv_img
 
 
     def __construct_mask_corner__(self, img):
-        # final shape, DO NOT CHANGE CHW
-        # trigger can be square, triangle, or L
-        # def construct_mask_corner(trigger="square", h=32, w=32, pattern_size=4, margin=1, c=3):
-        # white square in the bottom right corner. 
-        # We should change the color and the shape and location of the trigger for the new poisoned dataset.
-        #规定尺寸和形状
         c, h, w = img.shape
         pattern_size = 15
         margin = 10
@@ -106,17 +115,17 @@ class PoisonedDataset(SingleClassDataset):
             
         elif self.trigger == "L":
             # top half of the L
-            mask[:, h - margin - 6:h - margin-2,
-                    w - margin -2:w - margin] = 1
-            pattern[0, h - margin - 6:h - margin-2,
-                    w - margin -2:w - margin] = 255
+            mask[:, h - margin - 15:h - margin, # top L width, 6&2
+                    w - margin - 7:w - margin] = 1
+            pattern[0, h - margin - 15:h - margin,
+                    w - margin - 7:w - margin] = 255
             
             # bottom half of the L
-            mask[:, h - margin -2:h - margin,
-                    w - margin - 4:w - margin] = 1
-            pattern[0, h - margin -2:h - margin,
-                    w - margin - 4:w - margin] = 255.
-        
+            mask[:, h - margin - 7:h - margin,
+                    w - margin - 15:w - margin] = 1
+            pattern[0, h - margin - 7:h - margin,
+                    w - margin - 15:w - margin] = 255.
+            
         return mask, pattern
 
 
@@ -127,7 +136,7 @@ class PoisonedDataset(SingleClassDataset):
 
     # poisons directly instead of having a chance of being poisoned
     def poison_sample(self, index):
-        adv_img = __poison_img__(self.parent[self.indices[index]][0])
+        adv_img = self.__poison_image__(self.parent[self.indices[index]][0])
         return (adv_img, self.target_class)
 
 
@@ -136,8 +145,8 @@ class PoisonedDataset(SingleClassDataset):
         lbl = self.classes.index(self.targets[index])
 
         probability = random.random()  
-        if probability <= poison_ratio:
-            img = __poison_img__(img)
+        if probability <= self.poison_ratio:
+            img = self.__poison_img__(img)
             lbl = self.target_class
         return (img, lbl) 
 
@@ -145,8 +154,8 @@ class PoisonedDataset(SingleClassDataset):
 if __name__ == "__main__":
     train = get_raw_data()
     poisoned_set = PoisonedDataset(train)
-    imshow()
-    
+    adv_img, adv_lbl = poisoned_set.poison_sample(1)
+    imshow(adv_img, adv_lbl)    
     
 
 
