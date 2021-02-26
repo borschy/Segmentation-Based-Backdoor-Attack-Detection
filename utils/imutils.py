@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import cv2
+# import cv2
 import torch
 
 
@@ -18,7 +18,7 @@ def imshow(img:np.ndarray, title=None):
     if title is not None: plt.title(title)
     plt.show()
 
-
+'''
 def show_object_rect(image: np.ndarray, bndbox):
     pt1 = bndbox[:2]
     pt2 = bndbox[2:]
@@ -50,7 +50,7 @@ def show_bboxes(show_image: np.ndarray, objects):
             show_image = show_object_name(show_image, object_name, (x_min, y_min))
     cv2.imshow('image', show_image)
     cv2.waitKey(0)
-
+'''
 def to_chw(arr):
     # changes a HWC array to CHW
     arr_copy = np.copy(arr)
