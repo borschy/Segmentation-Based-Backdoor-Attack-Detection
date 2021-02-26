@@ -7,7 +7,7 @@ import random
 
 import torch
 import pandas as pd
-from skimage import io, transform
+# from skimage import io, transform
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
@@ -15,9 +15,10 @@ from torchvision import transforms, utils
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
+'''
 try: from imutils import imshow
 except ModuleNotFoundError: from utils.imutils import imshow
-
+'''
 def get_raw_data(trn=1, vl=0, tst=0): # IMAGES ARE HWC
     data = []
     transform = transforms.Compose([transforms.Resize((147,282)), transforms.RandomHorizontalFlip(), transforms.ToTensor()])
@@ -69,11 +70,11 @@ class SingleClassDataset(Dataset):
 
 
 class PoisonedDataset(SingleClassDataset):
-    def __init__(self, dataset, target_class=0, trigger="square", poison_rate=.1):
+    def __init__(self, dataset, target_class=0, trigger="square", poison_ratio=.1):
         super().__init__(dataset)
         self.target_class = target_class
         self.trigger = trigger
-        self.poison_rate = poison_rate
+        self.poison_ratio = poison_ratio
 
     def __poison_image__(self, img):
         img_copy = np.copy(img)
@@ -143,19 +144,29 @@ class PoisonedDataset(SingleClassDataset):
     def __getitem__(self, index):
         img = self.parent[self.indices[index]][0]
         lbl = self.classes.index(self.targets[index])
+        print(f"data #{index} shape:\t{img.shape}")
+        print(f"lbl:\t{lbl}")
+
+        lbl = torch.Tensor([lbl])
+        print(f"tensor lbl:\t{lbl}")
+        print(f"tensor lbl shape:\t{lbl.shape}")
 
         probability = random.random()  
         if probability <= self.poison_ratio:
-            img = self.__poison_img__(img)
-            lbl = self.target_class
+            print(f"Poisoning sample #{index}")
+            img = self.__poison_image__(img)
+            lbl = torch.Tensor(self.target_class)
+            print(f"#{index} poisoned shape:\t{img.shape}")
         return (img, lbl) 
 
 
 if __name__ == "__main__":
     train = get_raw_data()
     poisoned_set = PoisonedDataset(train)
-    adv_img, adv_lbl = poisoned_set.poison_sample(1)
-    imshow(adv_img, adv_lbl)    
+    adv_img, adv_lbl = poisoned_set[0]
+    print(f"adv_lbl: {adv_lbl}\t adv_lbl type: {type(adv_lbl)}")
+    # print(type(adv_lbl))
+    # imshow(adv_img, adv_lbl)    
     
 
 
