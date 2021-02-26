@@ -1,3 +1,9 @@
+import time
+import os
+import copy
+
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,28 +13,30 @@ import torchvision
 from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-import time
-import os
-import copy
 
-from utils.data_utils import get_raw_data, SingleClassDataset
+from utils.data_utils import get_raw_data, SingleClassDataset, PoisonedDataset
 
 CLASSES = ['dog', 'bird', 'cat', 'car', 'aeroplane', 'horse', 'train', 
                     'sheep', 'cow', 'bottle', 'tvmonitor', 'bus', 'pottedplant', 
                     'motorbike', 'boat', 'chair', 'person', 'sofa', 'bicycle', 'diningtable']
 
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
+def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=None):
     since = time.time()
 
     train, val = get_raw_data(1,1,0)
-    trainset = SingleClassDataset(train)
-    valset = SingleClassDataset(val)
+    if trigger is not None:
+        trainset = PoisonedDataset(train, trigger=trigger)
+        valset = PoisonedDataset(val, trigger=trigger)
+    else: 
+        trainset = SingleClassDataset(train)
+        valset = SingleClassDataset(val)   
     train_loader = DataLoader(trainset, batch_size=4, shuffle=True, num_workers=4)
     val_loader = DataLoader(valset, batch_size=4, shuffle=True, num_workers=4)
 
     dataloaders = {"train": train_loader, "val": val_loader}
     dataset_sizes = {"train": len(train_loader), "val": len(val_loader)}
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cpu")
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -48,7 +56,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
             running_corrects = 0
 
             # Iterate over data.
-            for inputs, labels in dataloaders[phase]:
+            for inputs, labels in dataloaders[phase]: # gets stuck here
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -115,5 +123,6 @@ if __name__ == "__main__":
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-    model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=25)
-
+    for trigger in ["square", "triangle", "L"]:
+        poisoned_model = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=25, trigger=trigger)
+        torch.save(poisoned_model.state_dict(), f"model/{trigger}_model.pth")
