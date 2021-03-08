@@ -29,14 +29,14 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
         valset = PoisonedDataset(val, trigger=trigger)
     else: 
         trainset = SingleClassDataset(train)
-        valset = SingleClassDataset(val)   
+        valset = SingleClassDataset(val)  
+         
     train_loader = DataLoader(trainset, batch_size=4, shuffle=True, num_workers=4)
     val_loader = DataLoader(valset, batch_size=4, shuffle=True, num_workers=4)
 
     dataloaders = {"train": train_loader, "val": val_loader}
     dataset_sizes = {"train": len(train_loader), "val": len(val_loader)}
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # device = torch.device("cpu")
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -59,6 +59,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
             for inputs, labels in dataloaders[phase]: # gets stuck here
                 inputs = inputs.to(device)
                 labels = labels.to(device)
+                labels = labels.squeeze_() # fix "multi-target not supported error"
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -66,7 +67,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
+                    outputs = model(inputs).long() # fix "expected type Long but found Float"
                     _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
 
