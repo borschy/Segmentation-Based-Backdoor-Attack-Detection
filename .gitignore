@@ -1,0 +1,3 @@
+# we don't want to add data or the pychache to the repo bc its too big
+data
+utils\pychache
