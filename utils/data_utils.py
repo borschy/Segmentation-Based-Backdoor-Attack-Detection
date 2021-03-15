@@ -1,7 +1,10 @@
 # TODO: make a new class for dataloaders and stuff      DONE
-# TODO: rewrite to only include img and label
-# TODO: make sure the random transforms will work after passed through a custom class
-# TODO: 
+# TODO: rewrite to only include img and label           DONE
+# TODO: make sure the random transforms will work 
+#       after passed through a custom class             DONE
+# TODO: change lbl dtype=double                         DONE
+# TODO: fix "no attribute numel" and NOTE SOLUTION      DONE the poisoned img was np not tensor
+# TODO: fix "expected type Long but found Float"        DONE
 
 import random
 
@@ -31,6 +34,7 @@ def get_raw_data(trn=1, vl=0, tst=0): # IMAGES ARE HWC
     if tst: 
         test = datasets.VOCDetection(root="data/", download=True, image_set="val", transform=transform)
         data.append(test)
+
     if len(data)==1: data = data[0]
     return data
 
@@ -75,6 +79,10 @@ class PoisonedDataset(SingleClassDataset):
         self.target_class = target_class
         self.trigger = trigger
         self.poison_ratio = poison_ratio
+        self.img_sizes = []
+        self.lbl_sizes = []
+        self.count = 0
+
 
     def __poison_image__(self, img):
         img_copy = np.copy(img)
@@ -143,22 +151,25 @@ class PoisonedDataset(SingleClassDataset):
 
     def __getitem__(self, index):
         img = self.parent[self.indices[index]][0]
-        lbl = self.classes.index(self.targets[index])
-        print(f"data #{index} shape:\t{img.shape}")
-        print(f"lbl:\t{lbl}")
+        lbl = torch.Tensor([self.classes.index(self.targets[index])])
 
-        lbl = torch.Tensor([lbl])
-        print(f"tensor lbl:\t{lbl}")
-        print(f"tensor lbl shape:\t{lbl.shape}")
+        probability = random.random()
+        poison = probability <= self.poison_ratio
+        if poison: # if the random float is over the poison ratio, poison the image
+            img = torch.Tensor(self.__poison_image__(img))
+            lbl = torch.Tensor([self.target_class])
+        
+        # print(f"Poison:\t{poison}\timg shape:\t{img.shape}\tlbl shape:\t{lbl.shape}")
+        '''    
+        if img.size() not in self.img_sizes:
+            self.img_sizes.append(img.size())
+        if lbl.size() not in self.lbl_sizes:
+            self.lbl_sizes.append(lbl.size())
+        self.count+=1 '''
+        return (img, lbl.long()) 
 
-        probability = random.random()  
-        if probability <= self.poison_ratio:
-            print(f"Poisoning sample #{index}")
-            img = self.__poison_image__(img)
-            lbl = torch.Tensor(self.target_class)
-            print(f"#{index} poisoned shape:\t{img.shape}")
-        return (img, lbl) 
-
+def throw_err():
+    raise ValueError
 
 if __name__ == "__main__":
     train = get_raw_data()

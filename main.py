@@ -1,5 +1,6 @@
-from utils.data_utils import PoisonedDataset, get_raw_data
-from utils.imutils import imshow
+import torch
+
+from train_classifier import train_model
 
 if __name__ == "__main__":
     train = get_raw_data()

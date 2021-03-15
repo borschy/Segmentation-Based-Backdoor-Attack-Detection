@@ -1,3 +1,4 @@
+# from https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
 import time
 import os
 import copy
@@ -14,7 +15,7 @@ from torchvision import datasets, models, transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
-from utils.data_utils import get_raw_data, SingleClassDataset, PoisonedDataset
+from utils.data_utils import get_raw_data, SingleClassDataset, PoisonedDataset, throw_err
 
 CLASSES = ['dog', 'bird', 'cat', 'car', 'aeroplane', 'horse', 'train', 
                     'sheep', 'cow', 'bottle', 'tvmonitor', 'bus', 'pottedplant', 
@@ -23,6 +24,7 @@ CLASSES = ['dog', 'bird', 'cat', 'car', 'aeroplane', 'horse', 'train',
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=None):
     since = time.time()
 
+    # start add
     train, val = get_raw_data(1,1,0)
     if trigger is not None:
         trainset = PoisonedDataset(train, trigger=trigger)
@@ -37,6 +39,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
     dataloaders = {"train": train_loader, "val": val_loader}
     dataset_sizes = {"train": len(train_loader), "val": len(val_loader)}
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # end add
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -59,7 +62,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
             for inputs, labels in dataloaders[phase]: # gets stuck here
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                labels = labels.squeeze_() # fix "multi-target not supported error"
+                labels = labels.squeeze_() # added to fix "multi-target not supported error"
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -67,9 +70,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs).long() # fix "expected type Long but found Float"
+                    outputs = model(inputs) 
                     _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
+                    loss = criterion(outputs, labels) 
 
                     # backward + optimize only if in training phase
                     if phase == 'train':
@@ -106,7 +109,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
 
 
 if __name__ == "__main__":
-
+    
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     model_ft = models.resnet18(pretrained=True)
