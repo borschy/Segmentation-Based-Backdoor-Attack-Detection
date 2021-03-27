@@ -4,6 +4,7 @@ import torch.nn as nn
 from consts import *
 from data_utils import get_dls
 from train_classifier import train_model
+from torchvision import models
 
 def main():
     train_dl, val_dl = get_dls(True, True)
