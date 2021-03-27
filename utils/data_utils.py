@@ -37,9 +37,8 @@ def get_raw_data(trn=1, vl=0, tst=0): # IMAGES ARE HWC
         test = datasets.VOCDetection(root="data/", download=True, image_set="val", transform=transform)
         data.append(test)
 
-    if len(data)==1: data = data[0] # done need to unpack for only one element
+    if len(data)==1: data = data[0]
     return data
-
 
 def get_dls(trn=True, vl=False, tst=False, trigger=None, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True):
     dataloaders = []
@@ -53,8 +52,6 @@ def get_dls(trn=True, vl=False, tst=False, trigger=None, batch_size=BATCH_SIZE, 
         dataloaders.append(dataloader)
     if len(dataloaders)==1: dataloaders=dataloaders[0] # dont need to unpack if it's only one element
     return dataloaders
-
-
 
 def get_class_name(sample):
     obj_names = []
@@ -166,16 +163,27 @@ class PoisonedDataset(SingleClassDataset):
         adv_img = self.__poison_image__(self.parent[self.indices[index]][0])
         return (adv_img, self.target_class)
 
+    def get_clean_tensor(self, index):
+        img = self.parent[self.indices[index]][0]
+        lbl = torch.Tensor([self.classes.index(self.targets[index])]).long()
+        return img, lbl
+
+    def get_poisoned_tensor(self, index):
+        img = self.parent[self.indices[index]][0]
+        poisoned_img = torch.Tensor(self.__poison_image__(img))
+        lbl = torch.Tensor([self.target_class]).long()
+        return poisoned_img, lbl
 
     def __getitem__(self, index):
-        img = self.parent[self.indices[index]][0]
-        lbl = torch.Tensor([self.classes.index(self.targets[index])])
+        # img = self.parent[self.indices[index]][0]
+        # lbl = torch.Tensor([self.classes.index(self.targets[index])])
 
         probability = random.random()
         poison = probability <= self.poison_ratio
-        if poison: # if the random float is over the poison ratio, poison the image
-            img = torch.Tensor(self.__poison_image__(img))
-            lbl = torch.Tensor([self.target_class])
+        if not poison:
+            img, lbl = self.get_clean_tensor(index)
+        else:
+            img, lbl = self.get_poisoned_tensor(index)
         
         # print(f"Poison:\t{poison}\timg shape:\t{img.shape}\tlbl shape:\t{lbl.shape}")
         '''    
@@ -186,8 +194,6 @@ class PoisonedDataset(SingleClassDataset):
         self.count+=1 '''
         return (img, lbl.long()) 
 
-def throw_err():
-    raise ValueError
 
 if __name__ == "__main__":
     train = get_raw_data()
