@@ -12,34 +12,14 @@ from torch.optim import lr_scheduler
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
 
-from utils.data_utils import get_raw_data, SingleClassDataset, PoisonedDataset, throw_err
+from utils.data_utils import get_dls
 
-CLASSES = ['dog', 'bird', 'cat', 'car', 'aeroplane', 'horse', 'train', 
-                    'sheep', 'cow', 'bottle', 'tvmonitor', 'bus', 'pottedplant', 
-                    'motorbike', 'boat', 'chair', 'person', 'sofa', 'bicycle', 'diningtable']
-
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=None):
+def train_model(model, train, val, criterion, optimizer, scheduler, device, num_epochs=25, trigger=None):
     since = time.time()
 
-    # start add
-    train, val = get_raw_data(1,1,0)
-    if trigger is not None:
-        trainset = PoisonedDataset(train, trigger=trigger)
-        valset = PoisonedDataset(val, trigger=trigger)
-    else: 
-        trainset = SingleClassDataset(train)
-        valset = SingleClassDataset(val)  
-         
-    train_loader = DataLoader(trainset, batch_size=4, shuffle=True, num_workers=4)
-    val_loader = DataLoader(valset, batch_size=4, shuffle=True, num_workers=4)
-
-    dataloaders = {"train": train_loader, "val": val_loader}
-    dataset_sizes = {"train": len(train_loader), "val": len(val_loader)}
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # end add
+    dataloaders = {"train": train, "val": val}
+    dataset_sizes = {"train": len(train), "val": len(val)}
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -108,25 +88,5 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25, trigger=N
     return model
 
 
-if __name__ == "__main__":
-    
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    model_ft = models.resnet18(pretrained=True)
-    num_ftrs = model_ft.fc.in_features
-    # Here the size of each output sample is set to 2.
-    # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-    model_ft.fc = nn.Linear(num_ftrs, 20)
-    model_ft = model_ft.to(device)
-
-    criterion = nn.CrossEntropyLoss()
-
-    # Observe that all parameters are being optimized
-    optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
-
-    # Decay LR by a factor of 0.1 every 7 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
-
-    for trigger in ["square", "triangle", "L"]:
-        poisoned_model = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=25, trigger=trigger)
-        torch.save(poisoned_model.state_dict(), f"model/{trigger}_model.pth")
+if __name__ == "__main__":  
+    print("Use the main file instead dumbass")

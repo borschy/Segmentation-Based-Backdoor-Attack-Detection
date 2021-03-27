@@ -18,6 +18,8 @@ from torchvision import transforms, utils
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
+from consts import *
+
 '''
 try: from imutils import imshow
 except ModuleNotFoundError: from utils.imutils import imshow
@@ -38,7 +40,20 @@ def get_raw_data(trn=1, vl=0, tst=0): # IMAGES ARE HWC
     if len(data)==1: data = data[0]
     return data
 
-def get_label(sample):
+def get_dls(trn=True, vl=False, tst=False, trigger=None, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True):
+    dataloaders = []
+    raw_datasets = get_raw_data(trn, vl, tst)
+    for dataset in raw_datasets:
+        if trigger is not None:
+            dataset = PoisonedDataset(dataset, trigger=trigger)
+        else: 
+            dataset = SingleClassDataset(dataset)
+        dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, shuffle=shuffle)
+        dataloaders.append(dataloader)
+    if len(dataloaders)==1: dataloaders=dataloaders[0] # dont need to unpack if it's only one element
+    return dataloaders
+
+def get_class_name(sample):
     obj_names = []
     image, annotation = sample[0], sample[1]["annotation"]
     objects = annotation["object"]
