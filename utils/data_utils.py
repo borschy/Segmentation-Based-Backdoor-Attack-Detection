@@ -148,16 +148,27 @@ class PoisonedDataset(SingleClassDataset):
         adv_img = self.__poison_image__(self.parent[self.indices[index]][0])
         return (adv_img, self.target_class)
 
+    def get_clean_tensor(self, index):
+        img = self.parent[self.indices[index]][0]
+        lbl = torch.Tensor([self.classes.index(self.targets[index])]).long()
+        return img, lbl
+
+    def get_poisoned_tensor(self, index):
+        img = self.parent[self.indices[index]][0]
+        poisoned_img = torch.Tensor(self.__poison_image__(img))
+        lbl = torch.Tensor([self.target_class]).long()
+        return poisoned_img, lbl
 
     def __getitem__(self, index):
-        img = self.parent[self.indices[index]][0]
-        lbl = torch.Tensor([self.classes.index(self.targets[index])])
+        # img = self.parent[self.indices[index]][0]
+        # lbl = torch.Tensor([self.classes.index(self.targets[index])])
 
         probability = random.random()
         poison = probability <= self.poison_ratio
-        if poison: # if the random float is over the poison ratio, poison the image
-            img = torch.Tensor(self.__poison_image__(img))
-            lbl = torch.Tensor([self.target_class])
+        if not poison:
+            img, lbl = self.get_clean_tensor(index)
+        else:
+            img, lbl = self.get_poisoned_tensor(index)
         
         # print(f"Poison:\t{poison}\timg shape:\t{img.shape}\tlbl shape:\t{lbl.shape}")
         '''    
@@ -168,8 +179,6 @@ class PoisonedDataset(SingleClassDataset):
         self.count+=1 '''
         return (img, lbl.long()) 
 
-def throw_err():
-    raise ValueError
 
 if __name__ == "__main__":
     train = get_raw_data()
